@@ -4,10 +4,12 @@
   "docker_options": "-v $(PWD):/home -w /home -p:80:80 -p 8080:8080 -p 443:443 -p 444:444",
   "scripts": {
     "dev": "vite",
+    "dev:sub": "vite src --host 0.0.0.0 --port 8080",
     "dev:https": "vite --https",
     "build": "vite build",
     "preview": "vite preview --port 5050",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
+    "vite:help": "npx vite --help"
   },
   "dependencies": {
     "pinia": "^2.0.13",

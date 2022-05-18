@@ -13,7 +13,7 @@ import HelloWorld from '@/components/HelloWorld/HelloWorld.vue'
       <nav>
         <RouterLink to="/">Home</RouterLink>
         <RouterLink to="/about">About</RouterLink>
-        <a href="/success">Success</a>
+        <a href="/success/">Success</a>
       </nav>
     </div>
   </header>

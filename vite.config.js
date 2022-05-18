@@ -1,7 +1,7 @@
 import { fileURLToPath, URL } from 'url'
 import { defineConfig, loadEnv } from 'vite'
 import { resolve } from 'path'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import vue from '@vitejs/plugin-vue'
 
 // Exports Vite config.
@@ -12,44 +12,70 @@ export default ({ mode }) => {
 
   const env = loadEnv(mode, process.cwd(), '')
 
+  // Gets https mode and base URL.
+  
+  const isHTTPS = process.argv.includes("--https")
+  const containerIP = "0.0.0.0"
+  const containerPort = isHTTPS ? "443" : "8080"
+  const baseURL = isHTTPS ? `https://${containerIP}:443` : `http://${containerIP}:8080`
+
+  // Gets proxy entry for each entry in src/pages.
+  
+  let proxyEntries = readdirSync(resolve("./src/pages"))
+    .reduce((entries, filePath) => {
+  
+      // Gets file name without it's extension.
+  
+      let fileName = filePath
+        .split("/")
+        .pop()
+        .split(".")
+        .shift()
+  
+      // Skips if no file name is returned.
+  
+      if (fileName === '') return entries
+  
+      // Adds entry.
+  
+      entries[`/${fileName}/`] = {
+        target: baseURL,
+        changeOrigin: true,
+        rewrite: (_) => `/src/pages/${fileName}.html`
+      }
+  
+      // Returns updated entries.
+  
+      return entries
+    }, {})
+  
+  // Adds socket.io entry so site can stay connected to dev server.
+  
+  proxyEntries['/socket.io'] = {
+    target: `ws://${containerIP}:${containerPort}`,
+    ws: true
+  }
+
   // Configures http dev server.
   
-  let devServer = {
-    host: '0.0.0.0',
-    port: 8080,
+  let server = {
+    host: containerIP,
+    port: containerPort,
     https: false,
-    proxy: {
-      '/socket.io': {
-        target: 'ws://0.0.0.0:8080',
-        ws: true
-      }
-    }
+    proxy: proxyEntries
   }
   
-  // Configures https dev server.
+  // Adds HTTPS key and cert.
   // @todo This is not working.
   
-  if (process.argv.includes("--https")) {
-    const ssl_key = resolve(`${env.LOCAL_KEY}`)
-    const ssl_cert = resolve(`${env.LOCAL_CERT}`)
-
-    devServer = {
-      host: '0.0.0.0',
-      port: 443,
-      https: {
-        key: readFileSync(ssl_key),
-        cert: readFileSync(ssl_cert)
-      },
-      proxy: {
-        '/socket.io': {
-          target: `ws://${env.LOCAL_URL}`,
-          ws: true
-        }
-      }
+  if (isHTTPS) {
+    server.https = {
+      key: readFileSync(resolve(`${env.LOCAL_KEY}`)),
+      cert: readFileSync(resolve(`${env.LOCAL_CERT}`))
     }
   }
 
-  // Returns config.
+  // Returns Vite config.
   
   return defineConfig({
     plugins: [vue()],
@@ -62,10 +88,10 @@ export default ({ mode }) => {
       rollupOptions: {
         input: {
           main: resolve(__dirname, 'index.html'),
-          success: resolve(__dirname, 'success/index.html')
+          success: resolve(__dirname, 'src/pages/success.html')
         }
       }
     },
-    server: devServer
+    server: server
   })
 }
